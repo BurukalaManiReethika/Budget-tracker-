@@ -1,171 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Budget Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0e0e0f; --surface: #19191c; --surface2: #222226;
-    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
-    --text: #f0ede8; --muted: #888580; --accent: #c8f04a;
-    --danger: #ff5f57; --warn: #ffb340; --green: #30d158;
-    --cat-food: #34c88a; --cat-transport: #4fa3f7; --cat-shopping: #f471b5;
-    --cat-bills: #ffb340; --cat-health: #a78bfa; --cat-other: #888580;
-  }
-  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; padding: 2rem 1rem 4rem; }
-  .container { max-width: 760px; margin: 0 auto; }
-  header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-  header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; }
-  header h1 span { color: var(--accent); }
-  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 2rem; }
-  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem 1.25rem; }
-  .metric-label { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
-  .metric-value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; }
-  .metric-value.ok { color: var(--green); }
-  .metric-value.warn { color: var(--warn); }
-  .metric-value.danger { color: var(--danger); }
-  .budget-section, .add-section, .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; }
-  .section-label { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 10px; }
-  .budget-input-row { display: flex; gap: 10px; }
-  .budget-input-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 0 14px; height: 42px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 15px; outline: none; }
-  .budget-input-row input:focus { border-color: var(--accent); }
-  .btn-accent { background: var(--accent); color: #0e0e0f; border: none; border-radius: 10px; padding: 0 20px; height: 42px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .btn-accent:hover { opacity: 0.85; }
-  .progress-wrap { margin-top: 14px; }
-  .progress-meta { display: flex; justify-content: space-between; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); margin-bottom: 6px; }
-  .progress-bar { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
-  .add-row { display: grid; grid-template-columns: 1fr 140px 140px auto; gap: 10px; }
-  .add-row input, .add-row select { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 0 14px; height: 42px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 14px; outline: none; }
-  .add-row input:focus, .add-row select:focus { border-color: var(--accent); }
-  .add-row select option { background: #222226; }
-  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-  .panel { margin-bottom: 0; }
-  .panel-title { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
-  .expense-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; }
-  .expense-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; }
-  .expense-item:hover { background: var(--surface2); }
-  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .exp-info { flex: 1; min-width: 0; }
-  .exp-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .exp-cat { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .exp-amount { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; flex-shrink: 0; }
-  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 2px; }
-  .del-btn:hover { color: var(--danger); }
-  .empty-msg { text-align: center; color: var(--muted); font-size: 13px; font-family: 'DM Mono', monospace; padding: 2rem 0; }
-  .legend { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-  .legend-name { flex: 1; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .legend-pct { font-family: 'DM Mono', monospace; font-size: 11px; }
-  @media (max-width: 600px) {
-    .summary-grid { grid-template-columns: 1fr 1fr; }
-    .add-row { grid-template-columns: 1fr 1fr; }
-    .add-row button { grid-column: span 2; }
-    .bottom-grid { grid-template-columns: 1fr; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budget. — Expense Tracker</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<div class="container">
-  <header>
-    <div>
-      <h1>Budget<span>.</span></h1>
-      <p style="margin-top:4px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">expense tracker</p>
-    </div>
-    <p id="today-date" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);"></p>
-  </header>
 
-  <div class="summary-grid">
-    <div class="metric"><div class="metric-label">Monthly budget</div><div class="metric-value" id="m-budget">₹0</div></div>
-    <div class="metric"><div class="metric-label">Total spent</div><div class="metric-value" id="m-spent">₹0</div></div>
-    <div class="metric"><div class="metric-label">Remaining</div><div class="metric-value" id="m-remaining">₹0</div></div>
-  </div>
+  <div class="app-wrapper">
 
-  <div class="budget-section">
-    <label class="section-label">Set monthly budget</label>
-    <div class="budget-input-row">
-      <input type="number" id="budget-input" placeholder="e.g. 50000" min="0" step="100"/>
-      <button class="btn-accent" onclick="setBudget()">Set budget</button>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-meta"><span id="prog-label">₹0 spent</span><span id="prog-pct">0%</span></div>
-      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;background:var(--green);"></div></div>
-    </div>
-  </div>
-
-  <div class="add-section">
-    <label class="section-label">Add expense</label>
-    <div class="add-row">
-      <input type="text" id="exp-name" placeholder="What did you spend on?"/>
-      <input type="number" id="exp-amount" placeholder="Amount ₹" min="0" step="1"/>
-      <select id="exp-cat">
-        <option value="Food">Food</option>
-        <option value="Transport">Transport</option>
-        <option value="Shopping">Shopping</option>
-        <option value="Bills">Bills</option>
-        <option value="Health">Health</option>
-        <option value="Other">Other</option>
-      </select>
-      <button class="btn-accent" onclick="addExpense()">+ Add</button>
-    </div>
-  </div>
-
-  <div class="bottom-grid">
-    <div class="panel">
-      <div class="panel-title">Expenses</div>
-      <div class="expense-list" id="expense-list"><p class="empty-msg">No expenses yet</p></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title">By category</div>
-      <div style="position:relative;width:100%;height:180px;">
-        <canvas id="catChart" role="img" aria-label="Spending by category"></canvas>
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-logo">₿</span>
+        <div>
+          <h1 class="brand-title">Budget.</h1>
+          <p class="brand-sub">expense tracker</p>
+        </div>
       </div>
-      <div class="legend" id="chart-legend"></div>
-    </div>
-  </div>
-</div>
+      <div class="header-meta">
+        <span id="current-month" class="month-label"></span>
+      </div>
+    </header>
 
-<script>
-  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-  const CAT_COLORS={Food:'#34c88a',Transport:'#4fa3f7',Shopping:'#f471b5',Bills:'#ffb340',Health:'#a78bfa',Other:'#888580'};
-  let budget=0,expenses=[],chart=null;
-  function fmt(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
-  function setBudget(){const v=parseFloat(document.getElementById('budget-input').value);if(isNaN(v)||v<0)return;budget=v;updateUI();}
-  function addExpense(){const name=document.getElementById('exp-name').value.trim();const amount=parseFloat(document.getElementById('exp-amount').value);const cat=document.getElementById('exp-cat').value;if(!name||isNaN(amount)||amount<=0)return;expenses.push({id:Date.now(),name,amount,cat});document.getElementById('exp-name').value='';document.getElementById('exp-amount').value='';updateUI();}
-  function deleteExpense(id){expenses=expenses.filter(e=>e.id!==id);updateUI();}
-  function updateUI(){
-    const total=expenses.reduce((s,e)=>s+e.amount,0);
-    const remaining=budget-total;
-    const pct=budget>0?Math.min(100,(total/budget)*100):0;
-    document.getElementById('m-budget').textContent=fmt(budget);
-    document.getElementById('m-spent').textContent=fmt(total);
-    const remEl=document.getElementById('m-remaining');
-    remEl.textContent=fmt(Math.abs(remaining))+(remaining<0?' over':'');
-    remEl.className='metric-value'+(remaining<0?' danger':pct>=80?' warn':' ok');
-    const fill=document.getElementById('progress-fill');
-    fill.style.width=pct.toFixed(1)+'%';
-    fill.style.background=pct>=100?'var(--danger)':pct>=80?'var(--warn)':'var(--green)';
-    document.getElementById('prog-label').textContent=fmt(total)+' spent';
-    document.getElementById('prog-pct').textContent=Math.round(pct)+'%';
-    const list=document.getElementById('expense-list');
-    if(!expenses.length){list.innerHTML='<p class="empty-msg">No expenses yet</p>';}
-    else{list.innerHTML=expenses.slice().reverse().map(e=>`<div class="expense-item"><div class="cat-dot" style="background:${CAT_COLORS[e.cat]};"></div><div class="exp-info"><div class="exp-name">${e.name}</div><div class="exp-cat">${e.cat}</div></div><div class="exp-amount">${fmt(e.amount)}</div><button class="del-btn" onclick="deleteExpense(${e.id})">×</button></div>`).join('');}
-    updateChart(total);
-  }
-  function updateChart(total){
-    const cats={};expenses.forEach(e=>{cats[e.cat]=(cats[e.cat]||0)+e.amount;});
-    const labels=Object.keys(cats);const data=labels.map(l=>Math.round(cats[l]));const colors=labels.map(l=>CAT_COLORS[l]);
-    document.getElementById('chart-legend').innerHTML=labels.map((l,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${colors[i]};"></div><span class="legend-name">${l}</span><span class="legend-pct">${total>0?Math.round((data[i]/total)*100)+'%':'0%'} · ${fmt(data[i])}</span></div>`).join('');
-    if(chart){chart.destroy();chart=null;}
-    if(!labels.length)return;
-    chart=new Chart(document.getElementById('catChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.parsed)}}}}});
-  }
-  updateUI();
-</script>
+    <section class="stats-row">
+      <div class="stat-card">
+        <span class="stat-label">Monthly Budget</span>
+        <span class="stat-value" id="stat-budget">₹0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Spent</span>
+        <span class="stat-value spent" id="stat-spent">₹0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Remaining</span>
+        <span class="stat-value remaining" id="stat-remaining">₹0</span>
+      </div>
+    </section>
+
+    <section class="progress-section">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-labels">
+        <span id="progress-text" class="progress-text">₹0 spent</span>
+        <span id="progress-pct" class="progress-pct">0%</span>
+      </div>
+    </section>
+
+    <div class="main-grid">
+
+      <div class="left-panel">
+
+        <div class="panel-card">
+          <h2 class="panel-title">Set Monthly Budget</h2>
+          <div class="input-row">
+            <div class="input-wrapper">
+              <span class="input-prefix">₹</span>
+              <input type="number" id="budget-input" placeholder="e.g. 30000" min="0" />
+            </div>
+            <button class="btn btn-primary" id="set-budget-btn">Set Budget</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h2 class="panel-title">Add Expense</h2>
+          <div class="expense-form">
+            <input type="text" id="expense-name" placeholder="Expense name (e.g. Lunch)" />
+            <div class="input-row">
+              <div class="input-wrapper">
+                <span class="input-prefix">₹</span>
+                <input type="number" id="expense-amount" placeholder="Amount" min="0" />
+              </div>
+              <button class="btn btn-accent" id="add-expense-btn">+ Add</button>
+            </div>
+            <div class="category-grid" id="category-grid">
+              <button class="cat-btn active" data-cat="Food">🥗 Food</button>
+              <button class="cat-btn" data-cat="Transport">🚌 Transport</button>
+              <button class="cat-btn" data-cat="Shopping">🛍 Shopping</button>
+              <button class="cat-btn" data-cat="Bills">⚡ Bills</button>
+              <button class="cat-btn" data-cat="Health">💊 Health</button>
+              <button class="cat-btn" data-cat="Other">📦 Other</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card chart-card">
+          <h2 class="panel-title">By Category</h2>
+          <div class="chart-wrapper">
+            <canvas id="donut-chart"></canvas>
+            <div class="chart-center" id="chart-center">
+              <span class="chart-center-label">Spent</span>
+              <span class="chart-center-value" id="chart-center-value">₹0</span>
+            </div>
+          </div>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
+
+      </div>
+
+      <div class="right-panel">
+        <div class="panel-card expenses-card">
+          <div class="expenses-header">
+            <h2 class="panel-title">Expenses</h2>
+            <div class="expenses-controls">
+              <select id="filter-cat" class="filter-select">
+                <option value="All">All Categories</option>
+                <option value="Food">Food</option>
+                <option value="Transport">Transport</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Bills">Bills</option>
+                <option value="Health">Health</option>
+                <option value="Other">Other</option>
+              </select>
+              <button class="btn btn-danger-outline" id="clear-all-btn">Clear All</button>
+            </div>
+          </div>
+
+          <div id="expense-list" class="expense-list">
+            <div class="empty-state" id="empty-state">
+              <span class="empty-icon">🧾</span>
+              <p>No expenses yet</p>
+              <span>Add your first expense to get started</span>
+            </div>
+          </div>
+
+          <div class="export-row">
+            <button class="btn btn-outline" id="export-csv-btn">↓ Export CSV</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/chart-helper.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+
 </body>
 </html>
